@@ -1,0 +1,173 @@
+version: '3'
+services:
+  load-balancer:
+    image: haproxy
+    hostname: load-balancer
+    depends_on:
+      - vault-transit
+      - vault-1
+      # - vault-2
+      # - vault-3
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "8200:8200"
+      - "8404:8404"
+    networks:
+      - vault 
+  vault-transit:
+    build: .
+    hostname: vault-transit
+    environment:
+      VAULT_LOCAL_CONFIG: |
+        {
+          "storage": {
+            "file": {
+              "path": "/vault/file"
+            }
+          },
+          "ui": true,
+          "disable_mlock": true,
+          "max_lease_ttl": "87600h",
+          "default_lease_ttl": "87600h",
+          "listener": [{
+            "tcp": {
+              "address": "0.0.0.0:8200",
+              "tls_disable": true
+            }
+          }]
+        }
+    command: ./vault-transit-init.sh
+    volumes:
+      - ./vault-transit-init.sh:/vault-transit-init.sh
+      - ./vault-transit:/vault/init
+    ports:
+      - "8282:8200"
+    networks:
+      - vault 
+  vault-1:
+    build: .
+    hostname: vault-1
+    depends_on:
+      - vault-transit
+    environment:
+      VAULT_CLUSTER_INTERFACE: eth0
+      VAULT_LOCAL_CONFIG: |
+        {
+          "storage": {
+            "raft": {
+              "path": "/vault/file",
+              "node_id": "vault-1"
+            }
+          },
+          "seal": {
+            "transit": {
+              "address": "http://vault-transit:8200",
+              "token": "auto-unseal-token",
+              "key_name": "auto-unseal",
+              "mount_path": "transit/"
+            }
+          },
+          "ui": true,
+          "disable_mlock": true,
+          "cluster_addr": "http://vault-1:8201",
+          "api_addr": "http://vault-1:8200",
+          "listener": [{
+            "tcp": {
+              "address": "0.0.0.0:8200",
+              "tls_disable": true
+            }
+          }]
+        }
+    command: ./vault-init.sh
+    volumes:
+      - ./vault-init.sh:/vault-init.sh
+      - ./vault-1:/vault/init
+    ports:
+      - "8210:8200"
+    networks:
+      - vault 
+  vault-2:
+    build: .
+    hostname: vault-2
+    depends_on:
+      - vault-1
+    environment:
+      VAULT_CLUSTER_INTERFACE: eth0
+      VAULT_LOCAL_CONFIG: |
+        {
+          "storage": {
+            "raft": {
+              "path": "/vault/file",
+              "node_id": "vault-2"
+            }
+          },
+          "seal": {
+            "transit": {
+              "address": "http://vault-transit:8200",
+              "token": "auto-unseal-token",
+              "key_name": "auto-unseal",
+              "mount_path": "transit/"
+            }
+          },
+          "ui": true,
+          "disable_mlock": true,
+          "cluster_addr": "http://vault-2:8201",
+          "api_addr": "http://vault-2:8200",
+          "listener": [{
+            "tcp": {
+              "address": "0.0.0.0:8200",
+              "tls_disable": true
+            }
+          }]
+        }
+    command: ./vault-raft-join.sh
+    volumes:
+      - ./vault-raft-join.sh:/vault-raft-join.sh
+    ports:
+      - "8220:8200"
+    networks:
+      - vault 
+  vault-3:
+    build: .
+    hostname: vault-3
+    depends_on:
+      - vault-2
+    environment:
+      VAULT_CLUSTER_INTERFACE: eth0
+      VAULT_LOCAL_CONFIG: |
+        {
+          "storage": {
+            "raft": {
+              "path": "/vault/file",
+              "node_id": "vault-3"
+            }
+          },
+          "seal": {
+            "transit": {
+              "address": "http://vault-transit:8200",
+              "token": "auto-unseal-token",
+              "key_name": "auto-unseal",
+              "mount_path": "transit/"
+            }
+          },
+          "ui": true,
+          "disable_mlock": true,
+          "cluster_addr": "http://vault-3:8201",
+          "api_addr": "http://vault-3:8200",
+          "listener": [{
+            "tcp": {
+              "address": "0.0.0.0:8200",
+              "tls_disable": true
+            }
+          }]
+        }
+    command: ./vault-raft-join.sh
+    volumes:
+      - ./vault-raft-join.sh:/vault-raft-join.sh
+    ports:
+      - "8230:8200"
+    networks:
+      - vault 
+networks:
+  vault:
