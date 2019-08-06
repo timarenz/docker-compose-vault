@@ -46,6 +46,23 @@ while $true; do
       echo "! WARNING - INSECURE - WARNING - INSECURE - WARNING - INSECURE - WARNING - INSECURE - WARNING - INSECURE - WARNING !"
       echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       rm -f $RANDOM_TEMP_FILE
+
+      if [ ! -f $HOME/initialized.txt ]; then
+        # Create token to allow prometheus access to metrics
+        until vault login $(cat $INIT_PATH/token.txt)
+        do
+          echo "Wait until Vault is available to proceed with configuration tasks."
+          sleep 1
+        done
+        vault policy write prometheus -<<EOF
+path "sys/metrics" {
+  capabilities = ["read"]
+}
+EOF
+        vault token create -id prometheus-token -policy=default -policy=prometheus
+        touch $HOME/initialized.txt
+      fi
+
       ;;
     *)
       echo "Vault is in an unkown state. Status code $VAULT_STATUS"

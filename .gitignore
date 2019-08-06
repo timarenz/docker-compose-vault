@@ -30,3 +30,4 @@ vault
 vault-transit/*.txt
 vault-1/*.txt
 vault-transit/*.txt
+vault-config.json

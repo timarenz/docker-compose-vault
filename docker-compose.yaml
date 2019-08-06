@@ -1,18 +1,36 @@
 version: '3'
 services:
   load-balancer:
-    image: haproxy
+    image: haproxy:2.0.3
     hostname: load-balancer
-    depends_on:
-      - vault-transit
-      - vault-1
-      # - vault-2
-      # - vault-3
     volumes:
       - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "8200:8200"
       - "8404:8404"
+    networks:
+      - vault
+  prometheus:
+    image: prom/prometheus:v2.11.1
+    hostname: prometheus
+    command: "--config.file=/prometheus-data/prometheus.yaml"
+    volumes:
+      - ./prometheus.yaml:/prometheus-data/prometheus.yaml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - vault
+  grafana:
+    image: grafana/grafana:6.2.5
+    hostname: grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "metrics"
+    volumes:
+      - ./datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
+      - ./dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml
+      - ./dashboard.json:/var/lib/grafana/dashboards/dashboard.json
+    ports:
+      - "3000:3000"
     networks:
       - vault 
   vault-transit:
@@ -30,12 +48,14 @@ services:
           "disable_mlock": true,
           "max_lease_ttl": "87600h",
           "default_lease_ttl": "87600h",
-          "listener": [{
-            "tcp": {
-              "address": "0.0.0.0:8200",
-              "tls_disable": true
+          "listener": [
+            {
+              "tcp": {
+                "address": "0.0.0.0:8200",
+                "tls_disable": true
+              }
             }
-          }]
+          ]
         }
     command: ./vault-transit-init.sh
     volumes:
@@ -72,12 +92,18 @@ services:
           "disable_mlock": true,
           "cluster_addr": "http://vault-1:8201",
           "api_addr": "http://vault-1:8200",
-          "listener": [{
-            "tcp": {
-              "address": "0.0.0.0:8200",
-              "tls_disable": true
+          "listener": [
+            {
+              "tcp": {
+                "address": "0.0.0.0:8200",
+                "tls_disable": true
+              }
             }
-          }]
+          ],
+          "telemetry": {
+            "prometheus_retention_time": "30s",
+            "disable_hostname": true
+          }
         }
     command: ./vault-init.sh
     volumes:
@@ -114,12 +140,18 @@ services:
           "disable_mlock": true,
           "cluster_addr": "http://vault-2:8201",
           "api_addr": "http://vault-2:8200",
-          "listener": [{
-            "tcp": {
-              "address": "0.0.0.0:8200",
-              "tls_disable": true
+          "listener": [
+            {
+              "tcp": {
+                "address": "0.0.0.0:8200",
+                "tls_disable": true
+              }
             }
-          }]
+          ],
+          "telemetry": {
+            "prometheus_retention_time": "30s",
+            "disable_hostname": true
+          }
         }
     command: ./vault-raft-join.sh
     volumes:
@@ -155,12 +187,18 @@ services:
           "disable_mlock": true,
           "cluster_addr": "http://vault-3:8201",
           "api_addr": "http://vault-3:8200",
-          "listener": [{
-            "tcp": {
-              "address": "0.0.0.0:8200",
-              "tls_disable": true
+          "listener": [
+            {
+              "tcp": {
+                "address": "0.0.0.0:8200",
+                "tls_disable": true
+              }
             }
-          }]
+          ],
+          "telemetry": {
+            "prometheus_retention_time": "30s",
+            "disable_hostname": true
+          }
         }
     command: ./vault-raft-join.sh
     volumes:

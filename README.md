@@ -13,9 +13,19 @@ Just run `docker-compose up` and after a few moments a brand new Vault cluster w
 
 You can use the Vault binary on your local machine to talk to the Vault cluster or just point your browser to the address listed above.
 
+To log on use the root token that is located in `vault-1\token.txt`.
+
+There is also HAProxy stats, Prometheus and Grafana running. They are available using the following URLs:
+
+| Service | URL | Username | Password |
+|---|---|---|---|
+| Grafana  | `http://localhost:3000` | admin | metrics |
+| Prometheus  | `http://localhost:9090` | - | - |
+| HAProy Stats  | `http://localhost:8404`| - | - |
+
 ### Enterprise binaries
 
-To use enterprise binaries copy the linux amd64 version of the Vault enterprise binary along side the docker-compose.yaml file and make sure you comment line #3 in the `Dockerfile`.
+To use enterprise binaries copy the linux amd64 version of the Vault enterprise binary along side the docker-compose.yaml file and make sure you uncomment line #3 in the `Dockerfile`.
 
 The `Dockerfile` should look like this after you uncommented the line #3.
 
@@ -54,6 +64,10 @@ During the first start each instance will be joined to the raft storage backend,
 HAProxy is running in this container to forward the traffic on port 8200 to the active Vault instance of the main cluster.
 
 You can also connect to `http://localhost:8404`to have a look at the HAProxy stats and to see which one is the active Vault instance.
+
+### Prometheus & Grafana
+
+Just Prometheus and Grafana
 
 ## Initialization and auto-unseal process of the vault-transit instance
 

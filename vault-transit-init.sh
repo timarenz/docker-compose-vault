@@ -55,9 +55,12 @@ while $true; do
       vault operator unseal $VAULT_UNSEAL_KEY
 
       if [ ! -f $HOME/initialized.txt ]; then
-        touch $HOME/initialized.txt
         ### Make sure transit engine, key and token is created for auto-unseal
-        vault login $(cat $INIT_PATH/token.txt)
+        until vault login $(cat $INIT_PATH/token.txt)
+        do
+          echo "Wait until Vault is available to proceed with configuration tasks."
+          sleep 1
+        done
         vault secrets enable transit
         vault write -f transit/keys/auto-unseal
         vault policy write auto-unseal -<<EOF
@@ -70,6 +73,7 @@ path "transit/decrypt/auto-unseal" {
 }
 EOF
         vault token create -id auto-unseal-token -policy=auto-unseal
+        touch $HOME/initialized.txt
       fi
       ;;
     *)
